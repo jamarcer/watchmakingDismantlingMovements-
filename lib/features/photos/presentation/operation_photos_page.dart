@@ -16,6 +16,7 @@ import '../../interventions/domain/intervention_repository.dart';
 import '../../interventions/presentation/soft_delete_confirmation.dart';
 import '../domain/photo_asset.dart';
 import '../domain/photo_repository.dart';
+import 'photo_viewer_page.dart';
 
 class OperationPhotosPage extends StatefulWidget {
   const OperationPhotosPage({
@@ -189,6 +190,41 @@ class _OperationPhotosPageState extends State<OperationPhotosPage> {
     }
   }
 
+  Future<void> _viewPhoto(
+    PhotoAsset photo, {
+    required String sourceLetter,
+    required bool isAnnotated,
+  }) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PhotoViewerPage(
+          photo: photo,
+          title:
+              (_operation?.code ?? widget.intervention.code) +
+              ' · Fotografía ' +
+              sourceLetter,
+          isAnnotated: isAnnotated,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _annotate(PhotoAsset source) async {
+    final operation = _operation;
+    if (operation == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AnnotationEditorPage(
+          intervention: widget.intervention,
+          operation: operation,
+          source: source,
+          repository: widget.annotationRepository,
+          photoRepository: widget.photoRepository,
+        ),
+      ),
+    );
+  }
+
   PhotoAsset? _photoFor(OperationPhotoKind kind) {
     for (final photo in _photos) {
       if (photo.kind == kind) return photo;
@@ -281,29 +317,20 @@ class _OperationPhotosPageState extends State<OperationPhotosPage> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _PhotoKindCard(
+                      operationCode: operation?.code ?? '',
                       kind: kind,
                       photo: _photoFor(kind),
                       isBusy: _busyKind == kind,
                       onCapture: () => _acquire(kind, capture: true),
                       onImport: () => _acquire(kind, capture: false),
-                    ),
-                  ),
-                if (_photoFor(OperationPhotoKind.before) case final source?)
-                  FilledButton.icon(
-                    key: const Key('annotate-before'),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => AnnotationEditorPage(
-                          intervention: widget.intervention,
-                          operation: operation!,
-                          source: source,
-                          repository: widget.annotationRepository,
-                          photoRepository: widget.photoRepository,
-                        ),
+                      operationPhotos: _photos,
+                      onAnnotate: (photo) => _annotate(photo),
+                      onView: (photo) => _viewPhoto(
+                        photo,
+                        sourceLetter: kind.letter,
+                        isAnnotated: photo.sourcePhotoId != null,
                       ),
                     ),
-                    icon: const Icon(Icons.draw_outlined),
-                    label: const Text('Anotar fotografía A'),
                   ),
                 if (operation != null)
                   ComponentPanel(
@@ -330,22 +357,34 @@ class _OperationPhotosPageState extends State<OperationPhotosPage> {
 
 class _PhotoKindCard extends StatelessWidget {
   const _PhotoKindCard({
+    required this.operationCode,
     required this.kind,
     required this.photo,
     required this.isBusy,
     required this.onCapture,
     required this.onImport,
+    required this.operationPhotos,
+    required this.onAnnotate,
+    required this.onView,
   });
 
+  final String operationCode;
   final OperationPhotoKind kind;
   final PhotoAsset? photo;
   final bool isBusy;
   final VoidCallback onCapture;
   final VoidCallback onImport;
+  final List<PhotoAsset> operationPhotos;
+  final ValueChanged<PhotoAsset> onAnnotate;
+  final ValueChanged<PhotoAsset> onView;
 
   @override
   Widget build(BuildContext context) {
     final item = photo;
+    final display = item == null
+        ? null
+        : preferredDisplayPhoto(item, operationPhotos);
+    final hasAnnotation = display?.sourcePhotoId != null;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -354,7 +393,7 @@ class _PhotoKindCard extends StatelessWidget {
             SizedBox(
               width: 128,
               height: 96,
-              child: item == null
+              child: display == null
                   ? ColoredBox(
                       color: Theme.of(context)
                           .colorScheme
@@ -367,7 +406,7 @@ class _PhotoKindCard extends StatelessWidget {
                       ),
                     )
                   : Image.file(
-                      File(item.thumbnailPath),
+                      File(display.thumbnailPath),
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) =>
                           const Icon(Icons.broken_image_outlined),
@@ -383,11 +422,15 @@ class _PhotoKindCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
-                  Text(item == null ? kind.defaultFileName : _details(item)),
+                  Text(
+                    display == null
+                        ? kind.fileNameFor(operationCode)
+                        : _details(display),
+                  ),
                   const SizedBox(height: 12),
                   if (isBusy)
                     const LinearProgressIndicator()
-                  else if (item == null)
+                  else if (display == null)
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -407,9 +450,41 @@ class _PhotoKindCard extends StatelessWidget {
                       ],
                     )
                   else
-                    const Chip(
-                      avatar: Icon(Icons.verified_outlined),
-                      label: Text('Original guardado'),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          avatar: Icon(
+                            hasAnnotation
+                                ? Icons.draw_outlined
+                                : Icons.verified_outlined,
+                          ),
+                          label: Text(
+                            hasAnnotation
+                                ? 'Anotada'
+                                : 'Original sin anotación',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          key: Key('view-' + kind.name),
+                          onPressed: () => onView(display),
+                          icon: const Icon(Icons.visibility_outlined),
+                          label: Text(
+                            hasAnnotation ? 'Ver anotada' : 'Ver original',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          key: Key('annotate-' + kind.name),
+                          onPressed: () => onAnnotate(item!),
+                          icon: const Icon(Icons.draw_outlined),
+                          label: Text(
+                            hasAnnotation
+                                ? 'Editar anotación'
+                                : 'Anotar ' + kind.letter,
+                          ),
+                        ),
+                      ],
                     ),
                 ],
               ),

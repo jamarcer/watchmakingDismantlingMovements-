@@ -272,55 +272,85 @@ class _FindingDialogState extends State<_FindingDialog> {
   Widget build(BuildContext context) => AlertDialog(
     title: const Text('Registrar hallazgo'),
     content: SizedBox(
-      width: 520,
+      width: 728,
       child: Form(
         key: form,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      key: const Key("finding-zone"),
+                      controller: zone,
+                      decoration: const InputDecoration(
+                        labelText: "Zona o pieza *",
+                      ),
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? "Obligatorio" : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<DiagnosticCategory>(
+                      key: const Key("finding-category"),
+                      isExpanded: true,
+                      initialValue: category,
+                      decoration: const InputDecoration(labelText: "Categoría"),
+                      items: DiagnosticCategory.values
+                          .map(
+                            (v) => DropdownMenuItem(
+                              value: v,
+                              child: Text(v.label),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => category = v!),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<DiagnosticSeverity>(
+                      key: const Key("finding-severity"),
+                      isExpanded: true,
+                      initialValue: severity,
+                      decoration: const InputDecoration(labelText: "Gravedad"),
+                      items: DiagnosticSeverity.values
+                          .map(
+                            (v) => DropdownMenuItem(
+                              value: v,
+                              child: Text(v.label),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => severity = v!),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               TextFormField(
-                controller: zone,
-                decoration: const InputDecoration(labelText: 'Zona o pieza *'),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Obligatorio' : null,
-              ),
-              DropdownButtonFormField<DiagnosticCategory>(
-                initialValue: category,
-                decoration: const InputDecoration(labelText: 'Categoría'),
-                items: DiagnosticCategory.values
-                    .map(
-                      (v) => DropdownMenuItem(value: v, child: Text(v.label)),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => category = v!),
-              ),
-              DropdownButtonFormField<DiagnosticSeverity>(
-                initialValue: severity,
-                decoration: const InputDecoration(labelText: 'Gravedad'),
-                items: DiagnosticSeverity.values
-                    .map(
-                      (v) => DropdownMenuItem(value: v, child: Text(v.label)),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => severity = v!),
-              ),
-              TextFormField(
+                key: const Key("finding-description"),
                 controller: desc,
-                decoration: const InputDecoration(labelText: 'Descripción *'),
+                decoration: const InputDecoration(labelText: "Descripción *"),
                 maxLines: 3,
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Obligatorio' : null,
+                    v == null || v.trim().isEmpty ? "Obligatorio" : null,
               ),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
+                key: const Key("finding-photo"),
                 initialValue: photo,
                 decoration: const InputDecoration(
-                  labelText: 'Fotografía de evidencia (opcional)',
+                  labelText: "Fotografía de evidencia (opcional)",
                 ),
                 items: [
                   const DropdownMenuItem<String>(
                     value: null,
-                    child: Text('Sin evidencia'),
+                    child: Text("Sin evidencia"),
                   ),
                   ...widget.photos.map(
                     (p) => DropdownMenuItem(
@@ -331,10 +361,12 @@ class _FindingDialogState extends State<_FindingDialog> {
                 ],
                 onChanged: (v) => setState(() => photo = v),
               ),
+              const SizedBox(height: 12),
               TextFormField(
+                key: const Key("finding-action"),
                 controller: action,
                 decoration: const InputDecoration(
-                  labelText: 'Acción posterior propuesta',
+                  labelText: "Acción posterior propuesta",
                 ),
               ),
             ],

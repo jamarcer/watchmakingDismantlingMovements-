@@ -192,9 +192,10 @@ private class PhotoFileStore(
         val root = Uri.parse(values.requiredString("interventionsRootUri"))
         val folder = values.requiredString("interventionFolder")
         val code = values.requiredString("operationCode")
+        val annotationFileStem = values.requiredString("annotationFileStem")
         val intervention = requireDirectory(root, folder)
         val operation = requireDirectory(requireDirectory(intervention, "01_desmontaje"), code)
-        val jsonName = code + "_B_anotada.json"
+        val jsonName = annotationFileStem + ".json"
         replaceBytes(intervention, operation, jsonName, "application/json", values.requiredString("json").toByteArray(Charsets.UTF_8), "01_desmontaje/" + code + "/" + jsonName)
         if (!export) return null
         val png = values["renderedPng"] as? ByteArray ?: error("Falta la imagen renderizada.")
@@ -202,7 +203,7 @@ private class PhotoFileStore(
         val temporary = File(activity.cacheDir, UUID.randomUUID().toString() + ".jpg")
         FileOutputStream(temporary).use { output -> check(bitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)) }
         bitmap.recycle()
-        val name = code + "_B_anotada.jpg"
+        val name = annotationFileStem + ".jpg"
         findChild(operation, name, null)?.let { DocumentsContract.deleteDocument(activity.contentResolver, it) }
         return try { store(Uri.fromFile(temporary), root, folder, code, name) } finally { temporary.delete() }
     }
@@ -430,11 +431,17 @@ private class PhotoFileStore(
     }
 
     private fun requireDirectory(parent: Uri, name: String): Uri {
-        return findChild(
+        findChild(
             parent,
             name,
             DocumentsContract.Document.MIME_TYPE_DIR,
-        ) ?: error("No existe la carpeta " + name + ".")
+        )?.let { return it }
+        return DocumentsContract.createDocument(
+            activity.contentResolver,
+            parent,
+            DocumentsContract.Document.MIME_TYPE_DIR,
+            name,
+        ) ?: error("No se pudo crear la carpeta " + name + ".")
     }
 
     private fun findChild(parent: Uri, name: String, mimeType: String?): Uri? {

@@ -190,6 +190,7 @@ class _AnnotationEditorPageState extends State<AnnotationEditorPage> {
       root: widget.intervention.rootDocumentUri,
       folder: widget.intervention.folderName,
       operationCode: widget.operation.code,
+      sourceKind: widget.source.kind,
       json: d.elementsJson,
     );
     return d;
@@ -208,6 +209,7 @@ class _AnnotationEditorPageState extends State<AnnotationEditorPage> {
         root: widget.intervention.rootDocumentUri,
         folder: widget.intervention.folderName,
         operationCode: widget.operation.code,
+        sourceKind: widget.source.kind,
         json: d.elementsJson,
         renderedPng: data!.buffer.asUint8List(),
       );
@@ -221,7 +223,11 @@ class _AnnotationEditorPageState extends State<AnnotationEditorPage> {
       await widget.repository.markRendered(d.id, photo.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Copia B anotada exportada.')),
+          SnackBar(
+            content: Text(
+              'Copia ' + widget.source.kind.letter + ' anotada exportada.',
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -237,7 +243,11 @@ class _AnnotationEditorPageState extends State<AnnotationEditorPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: Text('${widget.operation.code} · Anotar fotografía A'),
+      title: Text(
+        widget.operation.code +
+            ' · Anotar fotografía ' +
+            widget.source.kind.letter,
+      ),
     ),
     body: Column(
       children: [

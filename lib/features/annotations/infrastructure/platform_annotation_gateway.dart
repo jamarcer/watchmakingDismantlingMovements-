@@ -11,19 +11,21 @@ class PlatformAnnotationGateway {
     required Uri root,
     required String folder,
     required String operationCode,
+    required OperationPhotoKind sourceKind,
     required String json,
   }) => _channel.invokeMethod(
     'saveAnnotationDraft',
-    _args(root, folder, operationCode, json),
+    _args(root, folder, operationCode, sourceKind, json),
   );
   Future<CapturedPhoto> export({
     required Uri root,
     required String folder,
     required String operationCode,
+    required OperationPhotoKind sourceKind,
     required String json,
     required Uint8List renderedPng,
   }) async {
-    final args = _args(root, folder, operationCode, json)
+    final args = _args(root, folder, operationCode, sourceKind, json)
       ..['renderedPng'] = renderedPng;
     final value = await _channel.invokeMapMethod<Object?, Object?>(
       'exportAnnotation',
@@ -42,11 +44,13 @@ class PlatformAnnotationGateway {
     Uri root,
     String folder,
     String code,
+    OperationPhotoKind sourceKind,
     String json,
   ) => {
     'interventionsRootUri': root.toString(),
     'interventionFolder': folder,
     'operationCode': code,
+    'annotationFileStem': sourceKind.annotationFileStemFor(code),
     'json': json,
   };
 }

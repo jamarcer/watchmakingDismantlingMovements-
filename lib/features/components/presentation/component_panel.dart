@@ -82,7 +82,7 @@ class _ComponentPanelState extends State<ComponentPanel> {
   Future<void> _add() async {
     final draft = await showDialog<ComponentDraft>(
       context: context,
-      builder: (_) => const _ComponentDialog(),
+      builder: (_) => _ComponentDialog(defaultTray: widget.operation.code),
     );
     if (draft == null) return;
     setState(() {
@@ -103,6 +103,32 @@ class _ComponentPanelState extends State<ComponentPanel> {
     }
   }
 
+  Future<void> _edit(WatchComponent component) async {
+    final draft = await showDialog<ComponentDraft>(
+      context: context,
+      builder: (_) => _ComponentDialog(component: component),
+    );
+    if (draft == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.repository.update(
+        component: component,
+        description: draft.description,
+        quantity: draft.quantity,
+        tray: draft.tray,
+        notes: draft.notes,
+      );
+      await _sync();
+    } catch (e) {
+      _error = 'No se pudo actualizar el componente: $e';
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _finish() async {
     if (!_state.canComplete) return;
     setState(() => _busy = true);
@@ -111,7 +137,7 @@ class _ComponentPanelState extends State<ComponentPanel> {
       await _sync(complete: true);
       if (mounted) setState(() => _complete = true);
     } catch (e) {
-      _error = 'No se pudo completar D01: $e';
+      _error = 'No se pudo completar ' + widget.operation.code + ': $e';
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -164,16 +190,25 @@ class _ComponentPanelState extends State<ComponentPanel> {
                   subtitle: Text(
                     'Cantidad: ${c.quantity} · Bandeja: ${c.tray.isEmpty ? 'pendiente' : c.tray}${c.position == null ? '' : ' · ${c.position}'}',
                   ),
-                  trailing: Icon(
-                    c.tray.isEmpty
-                        ? Icons.error_outline
-                        : Icons.inventory_2_outlined,
+                  trailing: IconButton(
+                    key: Key('edit-component-' + c.code),
+                    tooltip:
+                        widget.intervention.status == InterventionStatus.closed
+                        ? 'La intervención está cerrada'
+                        : 'Editar componente',
+                    onPressed:
+                        _busy ||
+                            widget.intervention.status ==
+                                InterventionStatus.closed
+                        ? null
+                        : () => _edit(c),
+                    icon: const Icon(Icons.edit_outlined),
                   ),
                 ),
               ),
             const Divider(),
             Text(
-              _complete ? 'D01 completa' : 'Pendientes',
+              _complete ? widget.operation.code + ' completa' : 'Pendientes',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             if (!_complete && state.blockers.isEmpty)
@@ -220,20 +255,36 @@ class _ComponentPanelState extends State<ComponentPanel> {
 }
 
 class _ComponentDialog extends StatefulWidget {
-  const _ComponentDialog();
+  const _ComponentDialog({this.component, this.defaultTray = ''});
+  final WatchComponent? component;
+  final String defaultTray;
   @override
   State<_ComponentDialog> createState() => _ComponentDialogState();
 }
 
 class _ComponentDialogState extends State<_ComponentDialog> {
   final _form = GlobalKey<FormState>();
-  final _description = TextEditingController(),
-      _quantity = TextEditingController(text: '1'),
-      _position = TextEditingController(),
-      _orientation = TextEditingController(),
-      _tray = TextEditingController(text: 'D01'),
-      _notes = TextEditingController();
-  var _type = ComponentType.part;
+  late final TextEditingController _description,
+      _quantity,
+      _position,
+      _orientation,
+      _tray,
+      _notes;
+  late ComponentType _type;
+
+  @override
+  void initState() {
+    super.initState();
+    final item = widget.component;
+    _type = item?.type ?? ComponentType.part;
+    _description = TextEditingController(text: item?.description ?? '');
+    _quantity = TextEditingController(text: (item?.quantity ?? 1).toString());
+    _position = TextEditingController(text: item?.position ?? '');
+    _orientation = TextEditingController(text: item?.orientation ?? '');
+    _tray = TextEditingController(text: item?.tray ?? widget.defaultTray);
+    _notes = TextEditingController(text: item?.notes ?? '');
+  }
+
   @override
   void dispose() {
     for (final c in [
@@ -256,60 +307,104 @@ class _ComponentDialogState extends State<_ComponentDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Registrar componente'),
+    title: Text(
+      widget.component == null ? 'Registrar componente' : 'Editar componente',
+    ),
     content: SizedBox(
-      width: 520,
+      width: 728,
       child: Form(
         key: _form,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DropdownButtonFormField<ComponentType>(
-                initialValue: _type,
-                decoration: const InputDecoration(labelText: 'Tipo'),
-                items: ComponentType.values
-                    .map(
-                      (v) => DropdownMenuItem(
-                        value: v,
-                        child: Text('${v.prefix}xx · ${v.label}'),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: DropdownButtonFormField<ComponentType>(
+                      key: const Key("component-type"),
+                      initialValue: _type,
+                      decoration: const InputDecoration(labelText: "Tipo"),
+                      items: ComponentType.values
+                          .map(
+                            (v) => DropdownMenuItem(
+                              value: v,
+                              child: Text("${v.prefix}xx · ${v.label}"),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: widget.component == null
+                          ? (v) => setState(() => _type = v!)
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      key: const Key("component-quantity"),
+                      controller: _quantity,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: "Cantidad *",
                       ),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _type = v!),
+                      validator: (v) => (int.tryParse(v ?? "") ?? 0) < 1
+                          ? "Debe ser mayor que cero."
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      key: const Key("component-tray"),
+                      controller: _tray,
+                      decoration: const InputDecoration(
+                        labelText: "Bandeja o compartimento *",
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? "Introduce una bandeja o compartimento."
+                          : null,
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 12),
               TextFormField(
-                key: const Key('component-description'),
+                key: const Key("component-description"),
                 controller: _description,
-                decoration: const InputDecoration(labelText: 'Descripción *'),
+                decoration: const InputDecoration(labelText: "Descripción *"),
                 validator: (v) => v == null || v.trim().isEmpty
-                    ? 'Introduce una descripción.'
+                    ? "Introduce una descripción."
                     : null,
               ),
-              TextFormField(
-                controller: _quantity,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Cantidad *'),
-                validator: (v) => (int.tryParse(v ?? '') ?? 0) < 1
-                    ? 'Debe ser mayor que cero.'
-                    : null,
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      key: const Key("component-position"),
+                      controller: _position,
+                      decoration: const InputDecoration(labelText: "Posición"),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      key: const Key("component-orientation"),
+                      controller: _orientation,
+                      decoration: const InputDecoration(
+                        labelText: "Orientación",
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 12),
               TextFormField(
-                controller: _position,
-                decoration: const InputDecoration(labelText: 'Posición'),
-              ),
-              TextFormField(
-                controller: _orientation,
-                decoration: const InputDecoration(labelText: 'Orientación'),
-              ),
-              TextFormField(
-                key: const Key('component-tray'),
-                controller: _tray,
-                decoration: const InputDecoration(
-                  labelText: 'Bandeja o compartimento',
-                ),
-              ),
-              TextFormField(
+                key: const Key("component-notes"),
                 controller: _notes,
                 decoration: const InputDecoration(labelText: 'Observaciones'),
                 maxLines: 2,
@@ -341,7 +436,7 @@ class _ComponentDialogState extends State<_ComponentDialog> {
             ),
           );
         },
-        child: const Text('Guardar'),
+        child: Text(widget.component == null ? 'Guardar' : 'Actualizar'),
       ),
     ],
   );

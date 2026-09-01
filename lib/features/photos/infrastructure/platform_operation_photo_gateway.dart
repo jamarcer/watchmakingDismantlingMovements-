@@ -49,7 +49,7 @@ class PlatformOperationPhotoGateway implements OperationPhotoGateway {
     required String operationCode,
     required OperationPhotoKind kind,
   }) async {
-    final fileName = operationCode + '_' + kind.defaultFileName.substring(4);
+    final fileName = kind.fileNameFor(operationCode);
     final value = await _channel.invokeMapMethod<Object?, Object?>(method, {
       'interventionsRootUri': interventionsRoot.toString(),
       'interventionFolder': interventionFolder,

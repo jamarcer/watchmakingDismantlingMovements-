@@ -16,8 +16,11 @@ class ComponentMarkdownGenerator {
   }) {
     bool has(OperationPhotoKind k) => photos.any((p) => p.kind == k);
     String ph(OperationPhotoKind k, String l) => has(k)
-        ? '- [$l](${operation.code}_${k.defaultFileName.substring(4)})'
+        ? '- [$l](${k.fileNameFor(operation.code)})'
         : '- $l: pendiente.';
+    final annotated = photos
+        .where((photo) => photo.kind == OperationPhotoKind.annotated)
+        .toList();
     String cell(String v) =>
         v.replaceAll('|', r'\|').replaceAll(RegExp(r'[\r\n]+'), ' ');
     final lines = <String>[
@@ -47,7 +50,12 @@ class ComponentMarkdownGenerator {
       '## Fotografías',
       '',
       ph(OperationPhotoKind.before, 'Antes'),
-      ph(OperationPhotoKind.annotated, 'Anotada'),
+      if (annotated.isEmpty)
+        '- Anotada: pendiente.'
+      else
+        ...annotated.map(
+          (photo) => '- [Anotada](' + photo.relativePath.split('/').last + ')',
+        ),
       ph(OperationPhotoKind.after, 'Después'),
       ph(OperationPhotoKind.parts, 'Piezas'),
       '',

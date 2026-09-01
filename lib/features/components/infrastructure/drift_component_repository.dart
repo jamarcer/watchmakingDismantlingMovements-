@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -105,6 +107,98 @@ class DriftComponentRepository implements ComponentRepository {
       updatedAt: now,
     );
   });
+  @override
+  Future<WatchComponent> update({
+    required WatchComponent component,
+    required String description,
+    required int quantity,
+    required String tray,
+    required String? notes,
+  }) => database.transaction(() async {
+    final cleanDescription = description.trim();
+    final cleanTray = tray.trim();
+    if (cleanDescription.isEmpty) {
+      throw ArgumentError.value(description, 'description');
+    }
+    if (quantity < 1) throw ArgumentError.value(quantity, 'quantity');
+    if (cleanTray.isEmpty) throw ArgumentError.value(tray, 'tray');
+    final intervention = await (database.select(
+      database.interventions,
+    )..where((t) => t.id.equals(component.interventionId))).getSingle();
+    if (intervention.status == 'closed') {
+      throw StateError('intervention_closed');
+    }
+    final now = DateTime.now();
+    final cleanNotes = _clean(notes);
+    final changed =
+        await (database.update(
+          database.components,
+        )..where((t) => t.id.equals(component.id))).write(
+          db.ComponentsCompanion(
+            description: Value(cleanDescription),
+            quantity: Value(quantity),
+            tray: Value(cleanTray),
+            notes: Value(cleanNotes),
+            updatedAt: Value(now),
+          ),
+        );
+    if (changed != 1) throw StateError('component_update_conflict');
+    await (database.update(
+      database.interventions,
+    )..where((t) => t.id.equals(component.interventionId))).write(
+      db.InterventionsCompanion(
+        documentState: const Value('pending'),
+        updatedAt: Value(now),
+      ),
+    );
+    await database
+        .into(database.auditEvents)
+        .insert(
+          db.AuditEventsCompanion.insert(
+            id: _uuid.v4(),
+            interventionId: component.interventionId,
+            eventType: 'component_updated',
+            entityType: const Value('component'),
+            entityId: Value(component.id),
+            entityCode: Value(component.code),
+            actor: Value(intervention.technician),
+            oldValuesJson: Value(
+              jsonEncode({
+                'description': component.description,
+                'quantity': component.quantity,
+                'tray': component.tray,
+                'notes': component.notes,
+              }),
+            ),
+            newValuesJson: Value(
+              jsonEncode({
+                'description': cleanDescription,
+                'quantity': quantity,
+                'tray': cleanTray,
+                'notes': cleanNotes,
+              }),
+            ),
+            details: Value(component.code + ' · componente actualizado'),
+            createdAt: now,
+          ),
+        );
+    return WatchComponent(
+      id: component.id,
+      interventionId: component.interventionId,
+      operationId: component.operationId,
+      code: component.code,
+      type: component.type,
+      description: cleanDescription,
+      quantity: quantity,
+      position: component.position,
+      orientation: component.orientation,
+      tray: cleanTray,
+      notes: cleanNotes,
+      createdAt: component.createdAt,
+      updatedAt: now,
+    );
+  });
+
   @override
   Future<void> completeOperation(String operationId) =>
       (database.update(

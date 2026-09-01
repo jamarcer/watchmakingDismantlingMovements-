@@ -1,14 +1,23 @@
 enum OperationPhotoKind {
-  before('A', 'Antes', 'D01_A_antes.jpg'),
-  annotated('B', 'Anotada', 'D01_B_anotada.jpg'),
-  after('C', 'Después', 'D01_C_despues.jpg'),
-  parts('D', 'Piezas', 'D01_D_piezas.jpg');
+  before('A', 'Antes', 'A_antes.jpg'),
+  annotated('B', 'Anotada', 'B_anotada.jpg'),
+  after('C', 'Después', 'C_despues.jpg'),
+  parts('D', 'Piezas', 'D_piezas.jpg');
 
-  const OperationPhotoKind(this.letter, this.label, this.defaultFileName);
+  const OperationPhotoKind(this.letter, this.label, this.fileNameSuffix);
 
   final String letter;
   final String label;
-  final String defaultFileName;
+  final String fileNameSuffix;
+
+  String fileNameFor(String operationCode) =>
+      operationCode + '_' + fileNameSuffix;
+
+  String annotationFileStemFor(String operationCode) =>
+      operationCode +
+      '_' +
+      (this == OperationPhotoKind.before ? 'B' : letter) +
+      '_anotada';
 }
 
 class PhotoAsset {
@@ -85,4 +94,17 @@ extension on Map<Object?, Object?> {
     return (this[key] as int?) ??
         (throw FormatException('Falta el campo ' + key + '.'));
   }
+}
+
+PhotoAsset preferredDisplayPhoto(
+  PhotoAsset original,
+  Iterable<PhotoAsset> operationPhotos,
+) {
+  for (final photo in operationPhotos) {
+    if (photo.kind == OperationPhotoKind.annotated &&
+        photo.sourcePhotoId == original.id) {
+      return photo;
+    }
+  }
+  return original;
 }

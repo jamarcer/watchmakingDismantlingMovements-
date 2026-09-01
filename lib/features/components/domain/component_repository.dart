@@ -8,5 +8,12 @@ abstract interface class ComponentRepository {
     required String operationId,
     required ComponentDraft draft,
   });
+  Future<WatchComponent> update({
+    required WatchComponent component,
+    required String description,
+    required int quantity,
+    required String tray,
+    required String? notes,
+  });
   Future<void> completeOperation(String operationId);
 }
