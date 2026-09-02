@@ -1,14 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 
+import '../../../core/platform/linux_file_services.dart';
 import '../domain/photo_asset.dart';
 import '../domain/photo_repository.dart';
 
 class PlatformOperationPhotoGateway implements OperationPhotoGateway {
   const PlatformOperationPhotoGateway();
-
   static const _channel = MethodChannel(
     'es.relojeria.fichasdesmontaje/document_root',
   );
+  static const _linux = LinuxFileServices();
 
   @override
   Future<CapturedPhoto?> capture({
@@ -17,12 +20,20 @@ class PlatformOperationPhotoGateway implements OperationPhotoGateway {
     required String operationCode,
     required OperationPhotoKind kind,
   }) {
+    if (Platform.isLinux) {
+      return Future.error(
+        PlatformException(
+          code: 'camera_unsupported',
+          message: 'En Linux las fotografías se incorporan mediante Importar.',
+        ),
+      );
+    }
     return _invoke(
       'captureOperationPhoto',
-      interventionsRoot: interventionsRoot,
-      interventionFolder: interventionFolder,
-      operationCode: operationCode,
-      kind: kind,
+      interventionsRoot,
+      interventionFolder,
+      operationCode,
+      kind,
     );
   }
 
@@ -33,29 +44,36 @@ class PlatformOperationPhotoGateway implements OperationPhotoGateway {
     required String operationCode,
     required OperationPhotoKind kind,
   }) {
+    if (Platform.isLinux) {
+      return _linux.importPhoto(
+        interventionsRoot: interventionsRoot,
+        interventionFolder: interventionFolder,
+        operationCode: operationCode,
+        kind: kind,
+      );
+    }
     return _invoke(
       'importOperationPhoto',
-      interventionsRoot: interventionsRoot,
-      interventionFolder: interventionFolder,
-      operationCode: operationCode,
-      kind: kind,
+      interventionsRoot,
+      interventionFolder,
+      operationCode,
+      kind,
     );
   }
 
   Future<CapturedPhoto?> _invoke(
-    String method, {
-    required Uri interventionsRoot,
-    required String interventionFolder,
-    required String operationCode,
-    required OperationPhotoKind kind,
-  }) async {
-    final fileName = kind.fileNameFor(operationCode);
+    String method,
+    Uri root,
+    String folder,
+    String code,
+    OperationPhotoKind kind,
+  ) async {
     final value = await _channel.invokeMapMethod<Object?, Object?>(method, {
-      'interventionsRootUri': interventionsRoot.toString(),
-      'interventionFolder': interventionFolder,
-      'operationCode': operationCode,
+      'interventionsRootUri': root.toString(),
+      'interventionFolder': folder,
+      'operationCode': code,
       'kind': kind.name,
-      'fileName': fileName,
+      'fileName': kind.fileNameFor(code),
     });
     return value == null ? null : CapturedPhoto.fromPlatform(value);
   }

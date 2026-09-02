@@ -435,12 +435,13 @@ class _PhotoKindCard extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        FilledButton.icon(
-                          key: Key('capture-' + kind.name),
-                          onPressed: onCapture,
-                          icon: const Icon(Icons.photo_camera_outlined),
-                          label: const Text('Cámara'),
-                        ),
+                        if (!Platform.isLinux)
+                          FilledButton.icon(
+                            key: Key('capture-' + kind.name),
+                            onPressed: onCapture,
+                            icon: const Icon(Icons.photo_camera_outlined),
+                            label: const Text('Cámara'),
+                          ),
                         OutlinedButton.icon(
                           key: Key('import-' + kind.name),
                           onPressed: onImport,

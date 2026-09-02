@@ -38,6 +38,8 @@ dependencies:
   drift_flutter: ^0.3.1
   uuid: ^4.6.0
   crypto: ^3.0.7
+  file_selector: ^1.0.4
+  image: ^4.8.0
 
 dev_dependencies:
   flutter_test:
