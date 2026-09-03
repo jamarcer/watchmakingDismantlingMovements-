@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../backups/application/backup_controller.dart';
@@ -11,6 +13,7 @@ import '../../storage/domain/document_root_repository.dart';
 import '../../storage/domain/document_storage_status.dart';
 import '../application/create_intervention.dart';
 import '../application/interventions_controller.dart';
+import '../application/import_intervention.dart';
 import '../domain/intervention.dart';
 import '../domain/intervention_repository.dart';
 import 'new_intervention_page.dart';
@@ -33,6 +36,7 @@ class InterventionsHomePage extends StatefulWidget {
     required this.componentDocumentGateway,
     required this.diagnosticRepository,
     required this.backupController,
+    this.importIntervention,
   });
 
   final DocumentRootRepository documentRootRepository;
@@ -45,6 +49,7 @@ class InterventionsHomePage extends StatefulWidget {
   final ComponentDocumentGateway componentDocumentGateway;
   final DiagnosticRepository diagnosticRepository;
   final BackupController backupController;
+  final ImportIntervention? importIntervention;
 
   @override
   State<InterventionsHomePage> createState() => _InterventionsHomePageState();
@@ -130,6 +135,27 @@ class _InterventionsHomePageState extends State<InterventionsHomePage>
 
   void _onChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _importIntervention() async {
+    final storage = _storageController.status;
+    if (storage == null) return;
+    try {
+      final result = await widget.importIntervention!.run(
+        storage.interventionsRoot,
+      );
+      if (result != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.code + ' importada correctamente.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo importar: ' + error.toString())),
+        );
+      }
+    }
   }
 
   Future<void> _newIntervention() async {
@@ -275,6 +301,15 @@ class _InterventionsHomePageState extends State<InterventionsHomePage>
       appBar: AppBar(
         title: const Text('Fichas de desmontaje'),
         actions: [
+          if (storage != null &&
+              Platform.isLinux &&
+              widget.importIntervention != null)
+            IconButton(
+              key: const Key('import-intervention'),
+              tooltip: 'Importar intervención',
+              onPressed: _importIntervention,
+              icon: const Icon(Icons.drive_folder_upload_outlined),
+            ),
           IconButton(
             key: const Key('open-deleted'),
             tooltip: 'Eliminados',

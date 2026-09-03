@@ -6,6 +6,7 @@ import '../features/components/domain/component_repository.dart';
 import '../features/components/domain/component_document_gateway.dart';
 import '../features/annotations/domain/annotation_repository.dart';
 import '../features/interventions/application/create_intervention.dart';
+import '../features/interventions/application/import_intervention.dart';
 import '../features/interventions/domain/intervention_repository.dart';
 import '../features/interventions/presentation/interventions_home_page.dart';
 import '../features/photos/domain/photo_repository.dart';
@@ -26,6 +27,7 @@ class FichasDesmontajeApp extends StatelessWidget {
     required this.componentDocumentGateway,
     required this.backupController,
     required this.diagnosticRepository,
+    this.importIntervention,
   });
 
   final DocumentRootRepository documentRootRepository;
@@ -38,6 +40,7 @@ class FichasDesmontajeApp extends StatelessWidget {
   final ComponentDocumentGateway componentDocumentGateway;
   final BackupController backupController;
   final DiagnosticRepository diagnosticRepository;
+  final ImportIntervention? importIntervention;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +59,7 @@ class FichasDesmontajeApp extends StatelessWidget {
         componentDocumentGateway: componentDocumentGateway,
         backupController: backupController,
         diagnosticRepository: diagnosticRepository,
+        importIntervention: importIntervention,
       ),
     );
   }

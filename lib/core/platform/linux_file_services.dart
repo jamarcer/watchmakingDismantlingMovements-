@@ -253,6 +253,21 @@ class LinuxFileServices {
     }
   }
 
+  Future<void> writePortableExport({
+    required Uri root,
+    required String folder,
+    required String json,
+  }) async {
+    final intervention = _child(_fromUri(root), folder);
+    final entry = await _writeEntry(
+      intervention,
+      'intervention_export.json',
+      utf8.encode(json),
+      'intervention_export.json',
+    );
+    await _updateManifest(intervention, entry);
+  }
+
   Future<DocumentStorageStatus> _status(String path) async {
     final root = Directory(path).absolute;
     if (!await root.exists()) {
