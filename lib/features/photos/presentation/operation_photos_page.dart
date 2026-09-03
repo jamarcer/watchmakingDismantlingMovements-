@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import '../../components/domain/component_document_gateway.dart';
 import '../../components/domain/component_repository.dart';
 import '../../diagnostics/domain/diagnostic_repository.dart';
-import '../../diagnostics/presentation/diagnostic_panel.dart';
+import '../../diagnostics/presentation/operation_findings_panel.dart';
 import '../../components/presentation/component_panel.dart';
 import '../../annotations/domain/annotation_repository.dart';
 import '../../annotations/presentation/annotation_editor_page.dart';
@@ -17,6 +17,12 @@ import '../../interventions/presentation/soft_delete_confirmation.dart';
 import '../domain/photo_asset.dart';
 import '../domain/photo_repository.dart';
 import 'photo_viewer_page.dart';
+
+Future<String?> showCreateOperationDialog(BuildContext context) =>
+    showDialog<String>(
+      context: context,
+      builder: (_) => const _NewOperationDialog(),
+    );
 
 class OperationPhotosPage extends StatefulWidget {
   const OperationPhotosPage({
@@ -29,6 +35,7 @@ class OperationPhotosPage extends StatefulWidget {
     required this.componentRepository,
     required this.componentDocumentGateway,
     required this.diagnosticRepository,
+    this.initialOperation,
   });
 
   final Intervention intervention;
@@ -39,6 +46,7 @@ class OperationPhotosPage extends StatefulWidget {
   final ComponentRepository componentRepository;
   final ComponentDocumentGateway componentDocumentGateway;
   final DiagnosticRepository diagnosticRepository;
+  final DisassemblyOperation? initialOperation;
 
   @override
   State<OperationPhotosPage> createState() => _OperationPhotosPageState();
@@ -56,6 +64,7 @@ class _OperationPhotosPageState extends State<OperationPhotosPage> {
   @override
   void initState() {
     super.initState();
+    _operation = widget.initialOperation;
     _load();
   }
 
@@ -242,54 +251,25 @@ class _OperationPhotosPageState extends State<OperationPhotosPage> {
               ? widget.intervention.code
               : widget.intervention.code + ' · ' + operation.code,
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Eliminar operación',
+            onPressed: operation == null ? null : _deleteOperation,
+            icon: const Icon(Icons.delete_outline),
+          ),
+          IconButton(
+            tooltip: 'Nueva operación',
+            onPressed: _createOperation,
+            icon: const Icon(Icons.add),
+          ),
+        ],
       ),
       body: operation == null && _error == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue:
-                            _operations.any((item) => item.id == operation?.id)
-                            ? operation?.id
-                            : null,
-                        decoration: const InputDecoration(
-                          labelText: 'Operación',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          for (final item in _operations)
-                            DropdownMenuItem(
-                              value: item.id,
-                              child: Text('${item.code} · ${item.title}'),
-                            ),
-                        ],
-                        onChanged: (id) {
-                          final selected = _operations
-                              .where((item) => item.id == id)
-                              .firstOrNull;
-                          if (selected != null) _selectOperation(selected);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      key: const Key('delete-operation'),
-                      tooltip: 'Eliminar operación',
-                      onPressed: operation == null ? null : _deleteOperation,
-                      icon: const Icon(Icons.delete_outline),
-                    ),
-                    IconButton.filled(
-                      tooltip: 'Nueva operación',
-                      onPressed: _createOperation,
-                      icon: const Icon(Icons.add),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 4),
                 Text(
                   'Fotografías de ${operation?.code ?? 'operación'}',
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -333,20 +313,20 @@ class _OperationPhotosPageState extends State<OperationPhotosPage> {
                     ),
                   ),
                 if (operation != null)
-                  ComponentPanel(
-                    intervention: widget.intervention,
-                    operation: operation,
-                    photos: _photos,
-                    repository: widget.componentRepository,
-                    documentGateway: widget.componentDocumentGateway,
-                  ),
-                if (operation != null)
-                  DiagnosticPanel(
+                  OperationFindingsPanel(
                     intervention: widget.intervention,
                     operation: operation,
                     photos: _photos,
                     repository: widget.diagnosticRepository,
                     componentRepository: widget.componentRepository,
+                    documentGateway: widget.componentDocumentGateway,
+                  ),
+                if (operation != null)
+                  ComponentPanel(
+                    intervention: widget.intervention,
+                    operation: operation,
+                    photos: _photos,
+                    repository: widget.componentRepository,
                     documentGateway: widget.componentDocumentGateway,
                   ),
               ],

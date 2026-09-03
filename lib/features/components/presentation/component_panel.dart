@@ -9,6 +9,22 @@ import '../domain/component.dart';
 import '../domain/component_document_gateway.dart';
 import '../domain/component_repository.dart';
 
+Future<ComponentDraft?> showRegisterComponentDialog(
+  BuildContext context,
+  String defaultTray,
+) => showDialog<ComponentDraft>(
+  context: context,
+  builder: (_) => _ComponentDialog(defaultTray: defaultTray),
+);
+
+Future<ComponentDraft?> showEditComponentDialog(
+  BuildContext context,
+  WatchComponent component,
+) => showDialog<ComponentDraft>(
+  context: context,
+  builder: (_) => _ComponentDialog(component: component),
+);
+
 class ComponentPanel extends StatefulWidget {
   const ComponentPanel({
     super.key,

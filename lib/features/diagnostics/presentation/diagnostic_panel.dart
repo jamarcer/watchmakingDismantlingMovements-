@@ -10,6 +10,14 @@ import '../../photos/domain/photo_asset.dart';
 import '../domain/diagnostic.dart';
 import '../domain/diagnostic_repository.dart';
 
+Future<DiagnosticDraft?> showRegisterFindingDialog(
+  BuildContext context,
+  List<PhotoAsset> photos,
+) => showDialog<DiagnosticDraft>(
+  context: context,
+  builder: (_) => _FindingDialog(photos: photos),
+);
+
 class DiagnosticPanel extends StatefulWidget {
   const DiagnosticPanel({
     super.key,

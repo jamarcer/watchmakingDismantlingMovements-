@@ -21,7 +21,7 @@ import 'deleted_interventions_page.dart';
 import 'soft_delete_confirmation.dart';
 import 'intervention_timeline_page.dart';
 import '../../photos/domain/photo_repository.dart';
-import '../../photos/presentation/operation_photos_page.dart';
+import 'intervention_panel_page.dart';
 
 class InterventionsHomePage extends StatefulWidget {
   const InterventionsHomePage({
@@ -279,7 +279,7 @@ class _InterventionsHomePageState extends State<InterventionsHomePage>
   Future<void> _openIntervention(Intervention intervention) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => OperationPhotosPage(
+        builder: (_) => InterventionPanelPage(
           intervention: intervention,
           interventionRepository: widget.interventionRepository,
           photoRepository: widget.photoRepository,
@@ -288,6 +288,10 @@ class _InterventionsHomePageState extends State<InterventionsHomePage>
           componentRepository: widget.componentRepository,
           componentDocumentGateway: widget.componentDocumentGateway,
           diagnosticRepository: widget.diagnosticRepository,
+          onBackup: () => _backup(intervention),
+          onToggleStatus: () => _toggleStatus(intervention),
+          onTimeline: () => _openTimeline(intervention),
+          onDelete: () => _deleteIntervention(intervention),
         ),
       ),
     );
@@ -486,7 +490,6 @@ class _StorageSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final available = status.availableBytes;
     return Material(
       color: status.isLowOnSpace
           ? Theme.of(context).colorScheme.errorContainer
@@ -494,22 +497,14 @@ class _StorageSummary extends StatelessWidget {
       child: ListTile(
         dense: true,
         leading: const Icon(Icons.sd_storage_outlined),
-        title: const Text('Carpeta documental disponible'),
-        subtitle: Text(
-          available == null
-              ? 'Espacio disponible no informado por Android'
-              : _formatBytes(available) + ' disponibles',
+        title: const Text('Carpeta documental'),
+        subtitle: SelectableText(
+          status.documentRoot.scheme == 'file'
+              ? status.documentRoot.toFilePath()
+              : status.documentRoot.toString(),
         ),
       ),
     );
-  }
-
-  String _formatBytes(int bytes) {
-    const gibibyte = 1024 * 1024 * 1024;
-    const mebibyte = 1024 * 1024;
-    return bytes >= gibibyte
-        ? (bytes / gibibyte).toStringAsFixed(1) + ' GB'
-        : (bytes / mebibyte).toStringAsFixed(0) + ' MB';
   }
 }
 

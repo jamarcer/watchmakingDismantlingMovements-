@@ -7,11 +7,20 @@ import '../../../core/database/app_database.dart' as db;
 import '../domain/component.dart';
 import '../domain/component_repository.dart';
 
-class DriftComponentRepository implements ComponentRepository {
+class DriftComponentRepository
+    implements ComponentRepository, InterventionComponentRepository {
   DriftComponentRepository(this.database, {Uuid uuid = const Uuid()})
     : _uuid = uuid;
   final db.AppDatabase database;
   final Uuid _uuid;
+
+  @override
+  Stream<List<WatchComponent>> watchForIntervention(String interventionId) {
+    final query = database.select(database.components)
+      ..where((table) => table.interventionId.equals(interventionId))
+      ..orderBy([(table) => OrderingTerm.asc(table.code)]);
+    return query.watch().map((rows) => rows.map(_map).toList());
+  }
 
   @override
   Future<List<WatchComponent>> getForOperation(String operationId) async {

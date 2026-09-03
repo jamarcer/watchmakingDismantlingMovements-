@@ -1,5 +1,9 @@
 import 'component.dart';
 
+abstract interface class InterventionComponentRepository {
+  Stream<List<WatchComponent>> watchForIntervention(String interventionId);
+}
+
 abstract interface class ComponentRepository {
   Stream<List<WatchComponent>> watchForOperation(String operationId);
   Future<List<WatchComponent>> getForOperation(String operationId);
